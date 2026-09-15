@@ -22,6 +22,7 @@ ragenv/
 data/
 chat/
 test_data/
+tmp/
 
 # Vector store (built from the raw chat data above; regenerable + contains chat text)
 faiss/
