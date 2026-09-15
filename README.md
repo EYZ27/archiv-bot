@@ -28,17 +28,22 @@
 
 ```
 project/
-├── main.py         # Streamlit 엔트리포인트, 화면 라우팅
-├── auth.py         # 로그인/회원가입
-├── views.py        # 화면별 렌더링 로직
-├── ui.py           # 공통 UI 컴포넌트/스타일
-├── db_utils.py      # SQLite 연결 및 쿼리
-├── utils.py         # 전사/이미지 분석/임베딩/RAG 유틸
-├── img/             # UI 에셋
-└── README/          # 발표 슬라이드
+├── main.py           # Streamlit 엔트리포인트, 화면 라우팅
+├── auth.py           # 로그인/회원가입
+├── views.py          # 화면별 렌더링 로직
+├── ui.py             # 공통 UI 컴포넌트/스타일
+├── db_utils.py       # SQLite 연결 및 쿼리
+├── utils.py          # 전사/이미지 분석/임베딩/RAG 유틸
+├── img/              # UI 에셋
+├── README/           # 발표 슬라이드
+├── db.db*            # (gitignore) SQLite DB — 계정 비밀번호 해시 포함
+├── data/             # (gitignore) 카카오톡 대화 원본 텍스트
+├── chat/             # (gitignore) 저장된 챗봇 대화 로그
+├── test_data/        # (gitignore) 테스트용 카카오톡 대화 원본
+└── faiss/            # (gitignore) 프로젝트별 벡터 인덱스 (대화 원문 포함)
 ```
 
-> `db.db*`, `data/`, `chat/`, `test_data/`, `faiss/`는 개인정보(카카오톡 대화 원문, 계정 비밀번호 해시 등)가 포함되어 있어 `.gitignore`로 저장소에서 제외했습니다.
+> 위 트리에서 `(gitignore)` 표시된 항목은 개인정보(카카오톡 대화 원문, 계정 비밀번호 해시 등)가 포함되어 있어 `.gitignore`로 저장소에서 제외했습니다. 로컬에는 존재하지만 이 저장소에는 올라가지 않습니다.
 
 ## 발표 슬라이드
 
