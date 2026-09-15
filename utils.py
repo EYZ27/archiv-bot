@@ -89,18 +89,16 @@ def _get_text_splitter():
 	return st.session_state.text_splitter
 
 
-def _get_chat_llm() -> ChatOpenAI:
-	"""ChatOpenAI 모델을 session state에서 관리하여 재사용.
+def _get_chat_llm(model: str = "gpt-5") -> ChatOpenAI:
+	"""ChatOpenAI 모델을 session state에서 모델별로 캐싱하여 재사용.
 
-	기본 모델은 gpt-5, 필요 시 환경에 맞게 교체 가능.
+	ChatOpenAI 생성자는 모델명을 검증하지 않으므로(오류는 invoke 시점에 발생),
+	gpt-5 미지원 여부는 호출부(chat_generate_response)에서 실제 invoke 실패로 판단해 폴백한다.
 	"""
-	if "chat_llm" not in st.session_state:
-		try:
-			st.session_state.chat_llm = ChatOpenAI(model="gpt-5", temperature=0.2)
-		except Exception:
-			# 폴백: 배포 환경에서 gpt-5 미지원 시 대체 모델 사용
-			st.session_state.chat_llm = ChatOpenAI(model="gpt-4o", temperature=0.2)
-	return st.session_state.chat_llm
+	cache_key = f"chat_llm_{model}"
+	if cache_key not in st.session_state:
+		st.session_state[cache_key] = ChatOpenAI(model=model, temperature=0.2)
+	return st.session_state[cache_key]
 
 
 def chat_generate_response(
@@ -155,9 +153,11 @@ def chat_generate_response(
 				messages.append(AIMessage(content=content))
 	messages.append(HumanMessage(content=user_input))
 
-	# 3) 모델 호출
-	llm = _get_chat_llm()
-	resp = llm.invoke(messages)
+	# 3) 모델 호출 (gpt-5 우선 시도, 미지원/실패 시 gpt-4o로 폴백)
+	try:
+		resp = _get_chat_llm("gpt-5").invoke(messages)
+	except Exception:
+		resp = _get_chat_llm("gpt-4o").invoke(messages)
 	return getattr(resp, "content", "") or ""
 
 
@@ -354,24 +354,24 @@ def archive_audio_and_vectorize(
 		except Exception:
 			text = ""
 
-			# 텍스트 벡터화 (공용 모듈 사용)
-			vectorize_and_store_text(
-				conn=conn,
-				project_id=project_id,
-				text=text,
-				source_path=data_path,
-				title=title,
-				selected_type=selected_type,
-				vdb_root=vdb_root,
-			)
-			return True, "오디오 저장 및 전사/벡터화가 완료되었습니다.", data_path
-
 		# 텍스트가 없으면 저장만 하고 종료
 		if not text:
 			return True, "오디오는 아카이브에 저장되었고, 전사에 실패했습니다.", data_path
 
+		# 텍스트 벡터화 (공용 모듈 사용)
+		vectorize_and_store_text(
+			conn=conn,
+			project_id=project_id,
+			text=text,
+			source_path=data_path,
+			title=title,
+			selected_type=selected_type,
+			vdb_root=vdb_root,
+		)
+		return True, "오디오 저장 및 전사/벡터화가 완료되었습니다.", data_path
+
 	except Exception as e:
-			return False, f"오류: {e}", None
+		return False, f"오류: {e}", None
 
 
 def archive_image_and_vectorize(
