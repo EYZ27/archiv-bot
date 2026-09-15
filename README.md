@@ -45,6 +45,38 @@ project/
 
 > 위 트리에서 `(gitignore)` 표시된 항목은 개인정보(카카오톡 대화 원문, 계정 비밀번호 해시 등)가 포함되어 있어 `.gitignore`로 저장소에서 제외했습니다. 로컬에는 존재하지만 이 저장소에는 올라가지 않습니다.
 
+## 시작하기
+
+### 사전 준비
+
+- Python 3.10
+- OpenAI API Key (임베딩 / gpt-4o / gpt-5 / Whisper API 호출에 사용)
+- [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) — 이미지 텍스트 추출(`pytesseract`)에 필요한 시스템 바이너리로, `pip install`과 별개로 OS에 직접 설치해야 합니다. 한국어 인식을 위해 한국어 언어팩(`kor`)도 함께 설치하고, PATH에 잡히지 않으면 `pytesseract.pytesseract.tesseract_cmd`에 설치 경로를 지정하세요.
+
+### 설치
+
+```bash
+git clone https://github.com/EYZ27/archiv-bot.git
+cd archiv-bot
+python -m venv venv
+source venv/bin/activate   # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+### 환경 변수
+
+```bash
+export OPENAI_API_KEY=sk-...   # Windows: set OPENAI_API_KEY=sk-...
+```
+
+### 실행
+
+```bash
+streamlit run main.py
+```
+
+첫 실행 시 `db.db`가 자동으로 생성되며, 회원가입 후 로그인하면 바로 사용할 수 있습니다.
+
 ## 발표 슬라이드
 
 <img src="README/Slide 16_9 - 00.png" width="800" />
