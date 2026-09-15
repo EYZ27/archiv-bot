@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual env
+venv/
+.venv/
+env/
+ragenv/
+
+# Env / secrets
+.env
+.env.*
+.streamlit/secrets.toml
+
+# Database (contains user password hashes)
+*.db
+*.db-shm
+*.db-wal
+
+# Sensitive user data (raw kakao chat exports, contain personal info)
+data/
+chat/
+test_data/
+
+# Vector store (built from the raw chat data above; regenerable + contains chat text)
+faiss/
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
