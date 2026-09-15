@@ -10,7 +10,7 @@ from utils import (
 from ui import header, quick_actions, page_header
 
 
-def _list_card(assets_dir: Path, db_path: Path, name: str, expl: str | None, index: int, show_actions: bool = True, allow_revert: bool = False) -> None:
+def _list_card(assets_dir: Path, db_path: Path, user_id: int, name: str, expl: str | None, index: int, show_actions: bool = True, allow_revert: bool = False) -> None:
 	with st.container(border=True):
 		left, center, right = st.columns([1, 3, 1])
 		with left:
@@ -37,7 +37,7 @@ def _list_card(assets_dir: Path, db_path: Path, name: str, expl: str | None, ind
 					)
 					if st.button("되돌리기", key=f"revert_btn_{index}", type="secondary", icon=":material/undo:", use_container_width=True):
 						conn = get_cached_db_connection(db_path)
-						ok, msg = set_project_completed(conn, project_name=name, completed=0)
+						ok, msg = set_project_completed(conn, user_id=user_id, project_name=name, completed=0)
 						if ok:
 							st.success("프로젝트가 진행 중으로 변경되었습니다.")
 							st.rerun()
@@ -64,7 +64,7 @@ def _list_card(assets_dir: Path, db_path: Path, name: str, expl: str | None, ind
 						st.rerun()
 					if st.button("완료하기", key=f"complete_btn_{index}", type="secondary", icon=":material/check:", use_container_width=True):
 						conn = get_cached_db_connection(db_path)
-						ok, msg = set_project_completed(conn, project_name=name, completed=1)
+						ok, msg = set_project_completed(conn, user_id=user_id, project_name=name, completed=1)
 						if ok:
 							st.success("프로젝트가 완료로 변경되었습니다.")
 							st.rerun()
@@ -74,35 +74,43 @@ def _list_card(assets_dir: Path, db_path: Path, name: str, expl: str | None, ind
 
 def render_project_list_screen(assets_dir: Path, db_path: Path) -> None:
 	page_header(assets_dir, "프로젝트 리스트")
+	user_id = st.session_state.get("user_id")
+	if not user_id:
+		st.error("로그인 후 다시 시도하세요.")
+		return
 	st.subheader("진행 중 프로젝트")
 	st.caption("Ongoing Projects")
-	ongoing = get_projects_by_completed(get_cached_db_connection(db_path), completed=0, limit=None)
+	ongoing = get_projects_by_completed(get_cached_db_connection(db_path), user_id=user_id, completed=0, limit=None)
 	if not ongoing:
 		st.info("진행 중 프로젝트가 없습니다.")
 	for i, (pid, name, expl) in enumerate(ongoing):
-		_list_card(assets_dir, db_path, name, expl, index=f"ongoing_{i}", show_actions=True, allow_revert=False)
+		_list_card(assets_dir, db_path, user_id, name, expl, index=f"ongoing_{i}", show_actions=True, allow_revert=False)
 	st.divider()
 	st.subheader("완료된 프로젝트")
 	st.caption("Completed Projects")
 	show_completed = st.checkbox("완료된 프로젝트 보기", value=True)
 	if show_completed:
-		completed = get_projects_by_completed(get_cached_db_connection(db_path), completed=1, limit=None)
+		completed = get_projects_by_completed(get_cached_db_connection(db_path), user_id=user_id, completed=1, limit=None)
 		if not completed:
 			st.info("완료된 프로젝트가 없습니다.")
 		for i, (pid, name, expl) in enumerate(completed):
-			_list_card(assets_dir, db_path, name, expl, index=f"completed_{i}", show_actions=False, allow_revert=True)
+			_list_card(assets_dir, db_path, user_id, name, expl, index=f"completed_{i}", show_actions=False, allow_revert=True)
 
 
 def ask_bot(assets_dir: Path, db_path: Path) -> None:
 	st.subheader("아카이봇에게 물어보세요!")
 	st.caption("I'm here to help you!")
+	user_id = st.session_state.get("user_id")
+	if not user_id:
+		st.error("로그인 후 다시 시도하세요.")
+		return
 	col_proj, col_input, col_send = st.columns([1.2, 3.2, 0.6])
 	with col_proj:
-		# Load project names from DB; if none, show '없음'
+		# 로그인한 사용자 소유 프로젝트만 표시; 없으면 '없음'
 		conn = get_cached_db_connection(db_path)
 		cur = conn.cursor()
 		# 최신 생성 순으로 정렬
-		cur.execute("SELECT projectname FROM PROJECT ORDER BY projectid DESC")
+		cur.execute("SELECT projectname FROM PROJECT WHERE userid = ? ORDER BY projectid DESC", (user_id,))
 		rows = cur.fetchall()
 		project_options = [r[0] for r in rows] if rows else ["없음"]
 		project = st.selectbox("프로젝트", project_options, label_visibility="collapsed")
@@ -115,19 +123,15 @@ def ask_bot(assets_dir: Path, db_path: Path) -> None:
 		send = st.button("", use_container_width=True, type="secondary", icon=":material/send:")
 		st.write("\n")
 	if send and question:
-		# 선택된 프로젝트 ID 조회
+		# 선택된 프로젝트 ID 조회 (본인 소유 프로젝트로 한정)
 		conn = get_cached_db_connection(db_path)
 		cur = conn.cursor()
-		cur.execute("SELECT projectid FROM PROJECT WHERE projectname = ?", (project,))
+		cur.execute("SELECT projectid FROM PROJECT WHERE projectname = ? AND userid = ?", (project, user_id))
 		row = cur.fetchone()
 		if not row:
 			st.error("선택한 프로젝트를 찾을 수 없습니다.")
 			return
 		project_id = int(row[0])
-		user_id = st.session_state.get("user_id")
-		if not user_id:
-			st.error("로그인 후 다시 시도하세요.")
-			return
 		# 챗 화면으로 이동: 초기 질문과 프로젝트 정보를 세션에 저장
 		st.session_state["chat_project_id"] = project_id
 		st.session_state["chat_project_name"] = project
@@ -214,10 +218,11 @@ def render_main_screen(assets_dir: Path, db_path: Path) -> None:
 	# 채팅 화면 네비게이션
 	if st.session_state.get("page_state")[-1] == "chat":
 		render_chat_screen(assets_dir, db_path)
-	# 진행/완료 프로젝트 개수 집계
+	# 진행/완료 프로젝트 개수 집계 (본인 소유 프로젝트만)
 	conn_cnt = get_cached_db_connection(db_path)
-	processing_cnt = count_projects_by_completed(conn_cnt, 0)
-	completed_cnt = count_projects_by_completed(conn_cnt, 1)
+	user_id = st.session_state.get("user_id")
+	processing_cnt = count_projects_by_completed(conn_cnt, user_id, 0) if user_id else 0
+	completed_cnt = count_projects_by_completed(conn_cnt, user_id, 1) if user_id else 0
 	img3 = assets_dir / "img/loading.png"
 	img4 = assets_dir / "img/check.png"
 	project_archive(img1=img3, img2=img4, processing=processing_cnt, completed=completed_cnt)
@@ -230,13 +235,18 @@ def render_main_screen(assets_dir: Path, db_path: Path) -> None:
 def render_record_screen(assets_dir: Path, db_path: Path) -> None:
 	"""프로젝트 기록하기 화면을 렌더링합니다."""
 	page_header(assets_dir, "프로젝트 기록하기")
-	
+
+	user_id = st.session_state.get("user_id")
+	if not user_id:
+		st.error("로그인 후 다시 시도하세요.")
+		return
+
 	# 프로젝트 선택
 	st.markdown("**프로젝트 선택**")
-	
-	# 현재 진행 중인 프로젝트들을 가져오기
+
+	# 현재 진행 중인 프로젝트들을 가져오기 (본인 소유만)
 	conn = get_cached_db_connection(db_path)
-	ongoing_projects = get_projects_by_completed(conn, completed=0, limit=None)
+	ongoing_projects = get_projects_by_completed(conn, user_id=user_id, completed=0, limit=None)
 	
 	# 프로젝트 이름 리스트 생성
 	project_names = [name for _, name, _ in ongoing_projects]
@@ -325,16 +335,12 @@ def render_record_screen(assets_dir: Path, db_path: Path) -> None:
 				conn = get_cached_db_connection(db_path)
 				try:
 					cur = conn.cursor()
-					cur.execute("SELECT projectid FROM PROJECT WHERE projectname = ?", (project_name,))
+					cur.execute("SELECT projectid FROM PROJECT WHERE projectname = ? AND userid = ?", (project_name, user_id))
 					row = cur.fetchone()
 					if not row:
 						st.error("선택한 프로젝트를 찾을 수 없습니다.")
 						return
 					project_id = int(row[0])
-					user_id = st.session_state.get("user_id")
-					if not user_id:
-						st.error("로그인 후 다시 시도하세요.")
-						return
 					# 저장 루트 경로 준비
 					data_root = assets_dir / "data"
 					vdb_root = assets_dir / "faiss"

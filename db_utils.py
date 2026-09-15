@@ -190,40 +190,58 @@ def create_project(
 
 def get_projects_by_completed(
 	conn: sqlite3.Connection,
+	user_id: int,
 	completed: int,
 	limit: int | None = None,
 ) -> list[tuple[int, str, str | None]]:
 	cur = conn.cursor()
-	query = "SELECT projectid, projectname, projectexpl FROM PROJECT WHERE completed = ? ORDER BY projectid DESC"
-	params: tuple = (completed,)
+	query = "SELECT projectid, projectname, projectexpl FROM PROJECT WHERE userid = ? AND completed = ? ORDER BY projectid DESC"
+	params: tuple = (user_id, completed)
 	if limit is not None:
 		query += " LIMIT ?"
-		params = (completed, limit)
+		params = (user_id, completed, limit)
 	cur.execute(query, params)
 	return [(int(r[0]), str(r[1]), r[2] if r[2] is not None else None) for r in cur.fetchall()]
 
 
-def count_projects_by_completed(conn: sqlite3.Connection, completed: int) -> int:
+def count_projects_by_completed(conn: sqlite3.Connection, user_id: int, completed: int) -> int:
 	cur = conn.cursor()
-	cur.execute("SELECT COUNT(*) FROM PROJECT WHERE completed = ?", (completed,))
+	cur.execute("SELECT COUNT(*) FROM PROJECT WHERE userid = ? AND completed = ?", (user_id, completed))
 	row = cur.fetchone()
 	return int(row[0]) if row and row[0] is not None else 0
 
 
-def set_project_completed(conn: sqlite3.Connection, project_name: str, completed: int = 1) -> tuple[bool, str]:
+def set_project_completed(conn: sqlite3.Connection, user_id: int, project_name: str, completed: int = 1) -> tuple[bool, str]:
 	"""프로젝트 완료 여부를 업데이트합니다.
 
-	project_name 기준으로 PROJECT.completed 플래그를 갱신합니다.
+	user_id 소유의 프로젝트 중 project_name과 일치하는 것만 갱신합니다.
 	"""
 	try:
 		cur = conn.cursor()
-		cur.execute("UPDATE PROJECT SET completed = ? WHERE projectname = ?", (completed, project_name))
+		cur.execute(
+			"UPDATE PROJECT SET completed = ? WHERE projectname = ? AND userid = ?",
+			(completed, project_name, user_id),
+		)
 		conn.commit()
 		if cur.rowcount == 0:
 			return False, "해당 프로젝트를 찾을 수 없습니다."
 		return True, "프로젝트 상태가 업데이트되었습니다."
 	except Exception as e:
 		return False, f"오류: {e}"
+
+
+def get_project_id_by_name(conn: sqlite3.Connection, user_id: int, project_name: str) -> int | None:
+	"""user_id 소유의 프로젝트 중 이름이 일치하는 projectid를 반환합니다.
+
+	프로젝트명은 사용자 간에 유일하지 않을 수 있으므로 반드시 userid로 함께 스코핑합니다.
+	"""
+	cur = conn.cursor()
+	cur.execute(
+		"SELECT projectid FROM PROJECT WHERE projectname = ? AND userid = ?",
+		(project_name, user_id),
+	)
+	row = cur.fetchone()
+	return int(row[0]) if row and row[0] is not None else None
 
 
 def insert_chatlog(conn: sqlite3.Connection, user_id: int, project_id: int, path: str) -> tuple[bool, str, int | None]:
