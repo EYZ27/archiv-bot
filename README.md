@@ -65,8 +65,11 @@ pip install -r requirements.txt
 
 ### 환경 변수
 
+`.env.example`을 복사해 `.env`를 만들고 값을 채우세요 (`.env`는 `.gitignore`에 포함되어 저장소에 올라가지 않습니다).
+
 ```bash
-export OPENAI_API_KEY=sk-...   # Windows: set OPENAI_API_KEY=sk-...
+cp .env.example .env
+# .env 파일을 열어 OPENAI_API_KEY=sk-... 형태로 채워주세요
 ```
 
 ### 실행

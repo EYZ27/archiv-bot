@@ -1,9 +1,12 @@
 import streamlit as st
 from pathlib import Path
+from dotenv import load_dotenv
 from db_utils import get_db_connection, get_cached_db_connection, initialize_database, create_project, count_projects_by_completed, get_user_id_by_email, create_user, get_projects_by_completed
 from ui import inject_responsive_styles, header, quick_actions
 from auth import auth_page
 from views import render_project_list_screen, render_main_screen, render_record_screen, render_chat_screen, render_chat_list_screen
+
+load_dotenv(Path(__file__).parent / ".env")
 
 
 def main() -> None:
